@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+
+        video {
+            width: 45%;
+            margin: 20px;
+            border: 2px solid #444;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Simple WebRTC Video Chat</h1>
+    <div>
+        <video id="localVideo" autoplay playsinline></video>
+        <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+    <button id="startCall">Start Call</button>
+    <button id="endCall">End Call</button>
+
+    <script>
+        let localStream;
+        let peerConnection;
+        const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const startCallButton = document.getElementById('startCall');
+        const endCallButton = document.getElementById('endCall');
+
+        // Access the webcam and mic
+        async function getLocalMedia() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localVideo.srcObject = localStream;
+            } catch (error) {
+                console.error('Error accessing media devices.', error);
+            }
+        }
+
+        // Create PeerConnection and handle events
+        function startCall() {
+            peerConnection = new RTCPeerConnection(servers);
+
+            // Add local stream to peer connection
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+
+            // When a remote stream arrives
+            peerConnection.ontrack = event => {
+                const [stream] = event.streams;
+                remoteVideo.srcObject = stream;
+            };
+
+            // Offer SDP
+            peerConnection.createOffer().then(offer => {
+                peerConnection.setLocalDescription(offer);
+                console.log("Offer created:", offer);
+            });
+
+            // Handle ICE candidates
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    console.log("ICE Candidate:", event.candidate);
+                    // Typically, the ICE candidate is sent to the remote peer here
+                }
+            };
+        }
+
+        // End the call by closing the PeerConnection
+        function endCall() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+        }
+
+        startCallButton.addEventListener('click', startCall);
+        endCallButton.addEventListener('click', endCall);
+
+        // Start capturing local media immediately
+        getLocalMedia();
+    </script>
+
+</body>
+</html>
